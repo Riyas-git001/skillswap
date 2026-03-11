@@ -204,8 +204,7 @@ function AuthScreen({ onLogin }) {
 }
 
 // ─── DASHBOARD TAB ──────────────────────────────────────
-function DashboardTab({ profile, requests, matchedUsers }) {
-  const isMobile = useIsMobile();
+function DashboardTab({ profile, requests, matchedUsers, isMobile }) {
   const pendingCount = requests.filter(r => r.receiver_id && r.status === "pending").length;
   return (
     <div>
@@ -271,7 +270,7 @@ function DashboardTab({ profile, requests, matchedUsers }) {
 }
 
 // ─── SKILLS TAB ─────────────────────────────────────────
-function SkillsTab({ profile, user, onRefresh }) {
+function SkillsTab({ profile, user, onRefresh, isMobile }) {
   const [newOfferedSkill, setNewOfferedSkill] = useState("");
   const [newRequiredSkill, setNewRequiredSkill] = useState("");
 
@@ -304,7 +303,6 @@ function SkillsTab({ profile, user, onRefresh }) {
     onRefresh();
   };
 
-  const isMobile = useIsMobile();
   return (
     <div>
       <div style={{ fontSize: isMobile ? 18 : 22, fontWeight: 800, color: C.text, fontFamily: "'Syne', sans-serif", marginBottom: 6 }}>My Skills</div>
@@ -366,8 +364,7 @@ function SkillsTab({ profile, user, onRefresh }) {
 }
 
 // ─── MATCHES TAB ────────────────────────────────────────
-function MatchesTab({ matchedUsers, profile, user, onRefresh }) {
-  const isMobile = useIsMobile();
+function MatchesTab({ matchedUsers, profile, user, onRefresh, isMobile }) {
   const sendSwapRequest = async (receiverId, skill) => {
     const { error } = await supabase.from("swap_requests").insert([{
       requester_id: user.id, receiver_id: receiverId, skill, status: "pending",
@@ -507,8 +504,7 @@ function RequestsTab({ requests, user, onRefresh }) {
 }
 
 // ─── CHAT TAB ───────────────────────────────────────────
-function ChatTab({ requests, user, messages, activeSwap, onOpenChat, newMessage, setNewMessage, onSendMessage, messagesEndRef }) {
-  const isMobile = useIsMobile();
+function ChatTab({ requests, user, messages, activeSwap, onOpenChat, newMessage, setNewMessage, onSendMessage, messagesEndRef, isMobile }) {
   const acceptedSwaps = requests.filter(r => r.status === "accepted");
   const [showContacts, setShowContacts] = useState(!isMobile);
 
@@ -609,6 +605,7 @@ function ChatTab({ requests, user, messages, activeSwap, onOpenChat, newMessage,
 
 // ─── MAIN APP ───────────────────────────────────────────
 function App() {
+  const isMobile = useIsMobile(); // must be first, before any conditional returns
   const [user, setUser]               = useState(null);
   const [profile, setProfile]         = useState(null);
   const [requests, setRequests]       = useState([]);
@@ -793,7 +790,6 @@ function App() {
     </div>
   );
 
-  const isMobile = useIsMobile();
   const pendingCount = requests.filter(r => r.receiver_id === user.id && r.status === "pending").length;
 
   return (
@@ -870,15 +866,15 @@ function App() {
 
         {/* ── MAIN CONTENT ── */}
         <div style={{ flex: 1, overflow: "auto", padding: isMobile ? "16px 14px 80px" : "32px 36px" }}>
-          {activeTab === "dashboard" && <DashboardTab profile={profile} requests={requests} matchedUsers={matchedUsers} />}
-          {activeTab === "skills"    && <SkillsTab profile={profile} user={user} onRefresh={refresh} />}
-          {activeTab === "matches"   && <MatchesTab matchedUsers={matchedUsers} profile={profile} user={user} onRefresh={refresh} />}
+          {activeTab === "dashboard" && <DashboardTab profile={profile} requests={requests} matchedUsers={matchedUsers} isMobile={isMobile} />}
+          {activeTab === "skills"    && <SkillsTab profile={profile} user={user} onRefresh={refresh} isMobile={isMobile} />}
+          {activeTab === "matches"   && <MatchesTab matchedUsers={matchedUsers} profile={profile} user={user} onRefresh={refresh} isMobile={isMobile} />}
           {activeTab === "requests"  && <RequestsTab requests={requests} user={user} onRefresh={refresh} />}
           {activeTab === "chat"      && (
             <ChatTab requests={requests} user={user} messages={messages} activeSwap={activeSwap}
               onOpenChat={(req) => { setActiveSwap(req); if (req) openChatWithRealtime(req.id); }}
               newMessage={newMessage} setNewMessage={setNewMessage}
-              onSendMessage={sendMessage} messagesEndRef={messagesEndRef} />
+              onSendMessage={sendMessage} messagesEndRef={messagesEndRef} isMobile={isMobile} />
           )}
         </div>
 
