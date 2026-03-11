@@ -410,9 +410,30 @@ function MatchesTab({ matchedUsers, profile, user, onRefresh }) {
 // ─── REQUESTS TAB ───────────────────────────────────────
 function RequestsTab({ requests, user, onRefresh }) {
   const acceptRequest = async (req) => {
+    // 1. Mark the swap as accepted
     await supabase.from("swap_requests").update({ status: "accepted" }).eq("id", req.id);
+
+    // 2. Give +1 credit to receiver (the person accepting)
+    const { data: receiverProfile } = await supabase
+      .from("profiles").select("time_credits").eq("id", req.receiver_id).single();
+    if (receiverProfile) {
+      await supabase.from("profiles")
+        .update({ time_credits: (receiverProfile.time_credits || 0) + 1 })
+        .eq("id", req.receiver_id);
+    }
+
+    // 3. Give +1 credit to requester (the person who sent the request)
+    const { data: requesterProfile } = await supabase
+      .from("profiles").select("time_credits").eq("id", req.requester_id).single();
+    if (requesterProfile) {
+      await supabase.from("profiles")
+        .update({ time_credits: (requesterProfile.time_credits || 0) + 1 })
+        .eq("id", req.requester_id);
+    }
+
     onRefresh();
   };
+
   const rejectRequest = async (reqId) => {
     await supabase.from("swap_requests").update({ status: "rejected" }).eq("id", reqId);
     onRefresh();
@@ -568,8 +589,10 @@ function App() {
   const [messages, setMessages]       = useState([]);
   const [newMessage, setNewMessage]   = useState("");
   const [loading, setLoading]         = useState(true);
-  const chatChannelRef = useRef(null); // holds the active realtime subscription
-  const messagesEndRef = useRef(null); // for auto-scroll to bottom
+  const chatChannelRef    = useRef(null);
+  const swapChannelRef    = useRef(null);
+  const profileChannelRef = useRef(null);
+  const messagesEndRef    = useRef(null);
 
   // Hash-based routing so browser back/forward buttons work
   const getTabFromHash = () => {
@@ -606,6 +629,8 @@ function App() {
     if (!data) return;
     setProfile(data);
     fetchRequests(userId);
+    subscribeToSwaps(userId);
+    subscribeToProfile(userId);
     findMatches(data, userId);
   };
 
@@ -613,6 +638,34 @@ function App() {
     const { data } = await supabase.from("swap_requests").select("*")
       .or(`receiver_id.eq.${userId},requester_id.eq.${userId}`);
     setRequests(data || []);
+  };
+
+  const subscribeToSwaps = (userId) => {
+    if (swapChannelRef.current) supabase.removeChannel(swapChannelRef.current);
+    const channel = supabase
+      .channel(`swap_requests:user=${userId}`)
+      .on("postgres_changes",
+        { event: "*", schema: "public", table: "swap_requests" },
+        () => fetchRequests(userId)
+      )
+      .subscribe();
+    swapChannelRef.current = channel;
+  };
+
+  // Subscribe to profile changes — keeps credits + skills live
+  const subscribeToProfile = (userId) => {
+    if (profileChannelRef.current) supabase.removeChannel(profileChannelRef.current);
+    const channel = supabase
+      .channel(`profiles:id=eq.${userId}`)
+      .on("postgres_changes",
+        { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${userId}` },
+        (payload) => {
+          // Directly update profile state from the live payload — no extra fetch needed
+          setProfile(payload.new);
+        }
+      )
+      .subscribe();
+    profileChannelRef.current = channel;
   };
 
   const findMatches = async (currentProfile, userId) => {
@@ -667,12 +720,11 @@ function App() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Clean up subscription when component unmounts
   useEffect(() => {
     return () => {
-      if (chatChannelRef.current) {
-        supabase.removeChannel(chatChannelRef.current);
-      }
+      if (chatChannelRef.current)    supabase.removeChannel(chatChannelRef.current);
+      if (swapChannelRef.current)    supabase.removeChannel(swapChannelRef.current);
+      if (profileChannelRef.current) supabase.removeChannel(profileChannelRef.current);
     };
   }, []);
 
@@ -689,6 +741,9 @@ function App() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+    if (swapChannelRef.current)    supabase.removeChannel(swapChannelRef.current);
+    if (chatChannelRef.current)    supabase.removeChannel(chatChannelRef.current);
+    if (profileChannelRef.current) supabase.removeChannel(profileChannelRef.current);
     setUser(null); setProfile(null); setRequests([]);
     setMatchedUsers([]); setActiveSwap(null);
   };
