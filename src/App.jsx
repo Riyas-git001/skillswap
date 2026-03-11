@@ -109,6 +109,17 @@ const SectionLabel = ({ children }) => (
   }}>{children}</div>
 );
 
+// ─── RESPONSIVE HOOK ────────────────────────────────────
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
+  return isMobile;
+}
+
 // ─── NAV CONFIG ─────────────────────────────────────────
 const NAV_ITEMS = [
   { id: "dashboard", icon: "⊞", label: "Dashboard" },
@@ -194,11 +205,12 @@ function AuthScreen({ onLogin }) {
 
 // ─── DASHBOARD TAB ──────────────────────────────────────
 function DashboardTab({ profile, requests, matchedUsers }) {
+  const isMobile = useIsMobile();
   const pendingCount = requests.filter(r => r.receiver_id && r.status === "pending").length;
   return (
     <div>
-      <div style={{ marginBottom: 28 }}>
-        <div style={{ fontSize: 22, fontWeight: 800, color: C.text, fontFamily: "'Syne', sans-serif" }}>
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ fontSize: isMobile ? 18 : 22, fontWeight: 800, color: C.text, fontFamily: "'Syne', sans-serif" }}>
           Welcome back, {profile.name?.split(" ")[0]} 👋
         </div>
         <div style={{ fontSize: 13, color: C.soft, marginTop: 4 }}>
@@ -207,7 +219,7 @@ function DashboardTab({ profile, requests, matchedUsers }) {
       </div>
 
       {/* Stats */}
-      <div style={{ display: "flex", gap: 14, marginBottom: 20, flexWrap: "wrap" }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4,1fr)", gap: 12, marginBottom: 16 }}>
         {[
           { icon: "⏱", value: profile.time_credits ?? 0, label: "Time Credits" },
           { icon: "◈", value: matchedUsers.length,        label: "Matches"      },
@@ -215,18 +227,18 @@ function DashboardTab({ profile, requests, matchedUsers }) {
           { icon: "✓", value: requests.filter(r => r.status === "accepted").length, label: "Accepted" },
         ].map(s => (
           <div key={s.label} style={{
-            flex: 1, minWidth: 120, background: C.surface, border: `1px solid ${C.border}`,
-            borderRadius: 14, padding: "18px 20px",
+            background: C.surface, border: `1px solid ${C.border}`,
+            borderRadius: 14, padding: isMobile ? "14px 16px" : "18px 20px",
           }}>
-            <div style={{ fontSize: 20, marginBottom: 6 }}>{s.icon}</div>
-            <div style={{ fontSize: 26, fontWeight: 800, color: C.text, fontFamily: "'Syne', sans-serif" }}>{s.value}</div>
-            <div style={{ fontSize: 12, color: C.soft, marginTop: 2 }}>{s.label}</div>
+            <div style={{ fontSize: 18, marginBottom: 4 }}>{s.icon}</div>
+            <div style={{ fontSize: isMobile ? 20 : 26, fontWeight: 800, color: C.text, fontFamily: "'Syne', sans-serif" }}>{s.value}</div>
+            <div style={{ fontSize: 11, color: C.soft, marginTop: 2 }}>{s.label}</div>
           </div>
         ))}
       </div>
 
       {/* Skills snapshot */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 14 }}>
         <Card>
           <SectionLabel>Skills I Offer</SectionLabel>
           <div>{(profile.skills_offered || []).map(s => <SkillTag key={s}>{s}</SkillTag>)}</div>
@@ -242,10 +254,10 @@ function DashboardTab({ profile, requests, matchedUsers }) {
               <div style={{
                 width: 32, height: 32, borderRadius: "50%", background: `${C.blue}22`,
                 border: `1.5px solid ${C.blue}55`, display: "flex", alignItems: "center",
-                justifyContent: "center", fontSize: 12, color: C.blue, fontWeight: 700,
+                justifyContent: "center", fontSize: 12, color: C.blue, fontWeight: 700, flexShrink: 0,
               }}>⇄</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, color: C.text, fontWeight: 600 }}>{r.skill}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, color: C.text, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.skill}</div>
                 <div style={{ fontSize: 11, color: C.soft }}>{r.status}</div>
               </div>
               <StatusBadge status={r.status} />
@@ -292,12 +304,13 @@ function SkillsTab({ profile, user, onRefresh }) {
     onRefresh();
   };
 
+  const isMobile = useIsMobile();
   return (
     <div>
-      <div style={{ fontSize: 22, fontWeight: 800, color: C.text, fontFamily: "'Syne', sans-serif", marginBottom: 6 }}>My Skills</div>
+      <div style={{ fontSize: isMobile ? 18 : 22, fontWeight: 800, color: C.text, fontFamily: "'Syne', sans-serif", marginBottom: 6 }}>My Skills</div>
       <div style={{ fontSize: 13, color: C.soft, marginBottom: 24 }}>Click the ✕ on any skill to remove it.</div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 16 }}>
         {/* Offered */}
         <Card>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
@@ -354,6 +367,7 @@ function SkillsTab({ profile, user, onRefresh }) {
 
 // ─── MATCHES TAB ────────────────────────────────────────
 function MatchesTab({ matchedUsers, profile, user, onRefresh }) {
+  const isMobile = useIsMobile();
   const sendSwapRequest = async (receiverId, skill) => {
     const { error } = await supabase.from("swap_requests").insert([{
       requester_id: user.id, receiver_id: receiverId, skill, status: "pending",
@@ -384,19 +398,22 @@ function MatchesTab({ matchedUsers, profile, user, onRefresh }) {
           return (
             <div key={u.id} style={{
               background: C.surface, border: `1px solid ${C.border}`,
-              borderRadius: 14, padding: "18px 22px", display: "flex", alignItems: "center", gap: 16,
+              borderRadius: 14, padding: isMobile ? "14px 16px" : "18px 22px",
+              display: "flex", flexDirection: isMobile ? "column" : "row",
+              alignItems: isMobile ? "flex-start" : "center", gap: 14,
             }}>
-              <Avatar name={u.name} size={46} />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 15, fontWeight: 700, color: C.text, fontFamily: "'Syne', sans-serif", marginBottom: 8 }}>{u.name}</div>
-                <div style={{ fontSize: 12, color: C.soft, marginBottom: 6 }}>Offers:</div>
-                <div>
-                  {(u.skills_offered || []).map((s, i) => (
-                    <SkillTag key={i} color={profile.skills_required?.includes(s) ? "accent" : "muted"}>{s}</SkillTag>
-                  ))}
+              <div style={{ display: "flex", alignItems: "center", gap: 12, width: "100%" }}>
+                <Avatar name={u.name} size={isMobile ? 36 : 46} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: isMobile ? 14 : 15, fontWeight: 700, color: C.text, fontFamily: "'Syne', sans-serif", marginBottom: 6 }}>{u.name}</div>
+                  <div>
+                    {(u.skills_offered || []).map((s, i) => (
+                      <SkillTag key={i} color={profile.skills_required?.includes(s) ? "accent" : "muted"}>{s}</SkillTag>
+                    ))}
+                  </div>
                 </div>
               </div>
-              <Btn onClick={() => sendSwapRequest(u.id, matchingSkill)}>
+              <Btn onClick={() => sendSwapRequest(u.id, matchingSkill)} style={{ width: isMobile ? "100%" : "auto", textAlign: "center" }}>
                 Send Request ⇄
               </Btn>
             </div>
@@ -491,37 +508,44 @@ function RequestsTab({ requests, user, onRefresh }) {
 
 // ─── CHAT TAB ───────────────────────────────────────────
 function ChatTab({ requests, user, messages, activeSwap, onOpenChat, newMessage, setNewMessage, onSendMessage, messagesEndRef }) {
+  const isMobile = useIsMobile();
   const acceptedSwaps = requests.filter(r => r.status === "accepted");
+  const [showContacts, setShowContacts] = useState(!isMobile);
 
   return (
     <div>
       <div style={{ fontSize: 22, fontWeight: 800, color: C.text, fontFamily: "'Syne', sans-serif", marginBottom: 6 }}>Chat</div>
-      <div style={{ fontSize: 13, color: C.soft, marginBottom: 20 }}>Coordinate your skill swaps.</div>
+      <div style={{ fontSize: 13, color: C.soft, marginBottom: 16 }}>Coordinate your skill swaps.</div>
 
-      <div style={{ display: "flex", gap: 16, height: 480 }}>
-        {/* Contact list */}
-        <div style={{ width: 210, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden", flexShrink: 0 }}>
-          <div style={{ padding: "14px 16px 10px", fontSize: 11, fontWeight: 700, color: C.soft, textTransform: "uppercase", letterSpacing: "0.08em" }}>Active Swaps</div>
-          {acceptedSwaps.length === 0 && (
-            <div style={{ padding: "12px 16px", color: C.muted, fontSize: 13 }}>No active swaps yet.</div>
-          )}
-          {acceptedSwaps.map(req => (
-            <div key={req.id}
-              onClick={() => onOpenChat(req)}
-              style={{
-                padding: "12px 16px", cursor: "pointer",
-                background: activeSwap?.id === req.id ? C.accentDim : "transparent",
-                borderLeft: activeSwap?.id === req.id ? `3px solid ${C.accent}` : "3px solid transparent",
-              }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{req.skill}</div>
-              <div style={{ fontSize: 11, color: C.soft, marginTop: 2 }}>
-                {req.requester_id === user.id ? "You requested" : "They requested"}
+      {/* Mobile: show contact list OR chat, not both */}
+      <div style={{ display: "flex", gap: 14, height: isMobile ? "calc(100vh - 220px)" : 480 }}>
+
+        {/* Contact list — always visible on desktop, toggleable on mobile */}
+        {(!isMobile || !activeSwap) && (
+          <div style={{ width: isMobile ? "100%" : 210, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden", flexShrink: 0 }}>
+            <div style={{ padding: "14px 16px 10px", fontSize: 11, fontWeight: 700, color: C.soft, textTransform: "uppercase", letterSpacing: "0.08em" }}>Active Swaps</div>
+            {acceptedSwaps.length === 0 && (
+              <div style={{ padding: "12px 16px", color: C.muted, fontSize: 13 }}>No active swaps yet.</div>
+            )}
+            {acceptedSwaps.map(req => (
+              <div key={req.id}
+                onClick={() => { onOpenChat(req); }}
+                style={{
+                  padding: "12px 16px", cursor: "pointer",
+                  background: activeSwap?.id === req.id ? C.accentDim : "transparent",
+                  borderLeft: activeSwap?.id === req.id ? `3px solid ${C.accent}` : "3px solid transparent",
+                }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{req.skill}</div>
+                <div style={{ fontSize: 11, color: C.soft, marginTop: 2 }}>
+                  {req.requester_id === user.id ? "You requested" : "They requested"}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
-        {/* Chat panel */}
+        {/* Chat panel — full width on mobile when a swap is selected */}
+        {(!isMobile || activeSwap) && (
         <div style={{ flex: 1, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, display: "flex", flexDirection: "column", overflow: "hidden" }}>
           {!activeSwap ? (
             <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: C.muted, fontSize: 14 }}>
@@ -530,8 +554,11 @@ function ChatTab({ requests, user, messages, activeSwap, onOpenChat, newMessage,
           ) : (
             <>
               {/* Header */}
-              <div style={{ padding: "14px 18px", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ width: 34, height: 34, borderRadius: "50%", background: `${C.accent}22`, border: `1.5px solid ${C.accent}55`, display: "flex", alignItems: "center", justifyContent: "center", color: C.accent, fontSize: 14 }}>⇄</div>
+              <div style={{ padding: "12px 16px", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 10 }}>
+                {isMobile && (
+                  <button onClick={() => onOpenChat(null)} style={{ background: "transparent", border: "none", color: C.soft, fontSize: 18, cursor: "pointer", padding: "0 6px 0 0" }}>←</button>
+                )}
+                <div style={{ width: 32, height: 32, borderRadius: "50%", background: `${C.accent}22`, border: `1.5px solid ${C.accent}55`, display: "flex", alignItems: "center", justifyContent: "center", color: C.accent, fontSize: 13 }}>⇄</div>
                 <div>
                   <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>Swap: {activeSwap.skill}</div>
                   <div style={{ fontSize: 11, color: C.accent }}>● Active swap</div>
@@ -539,11 +566,11 @@ function ChatTab({ requests, user, messages, activeSwap, onOpenChat, newMessage,
               </div>
 
               {/* Messages */}
-              <div style={{ flex: 1, overflow: "auto", padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+              <div style={{ flex: 1, overflow: "auto", padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
                 {messages.map(msg => (
                   <div key={msg.id} style={{ display: "flex", justifyContent: msg.sender_id === user.id ? "flex-end" : "flex-start" }}>
                     <div style={{
-                      maxWidth: "68%", padding: "10px 14px", fontSize: 13, lineHeight: 1.5,
+                      maxWidth: isMobile ? "80%" : "68%", padding: "10px 14px", fontSize: 13, lineHeight: 1.5,
                       borderRadius: msg.sender_id === user.id ? "14px 14px 4px 14px" : "14px 14px 14px 4px",
                       background: msg.sender_id === user.id ? C.accent : C.bg,
                       color: msg.sender_id === user.id ? "#000" : C.text,
@@ -564,16 +591,17 @@ function ChatTab({ requests, user, messages, activeSwap, onOpenChat, newMessage,
               </div>
 
               {/* Input */}
-              <div style={{ padding: "12px 16px", borderTop: `1px solid ${C.border}`, display: "flex", gap: 10 }}>
+              <div style={{ padding: "10px 14px", borderTop: `1px solid ${C.border}`, display: "flex", gap: 10 }}>
                 <input value={newMessage} onChange={e => setNewMessage(e.target.value)}
                   onKeyDown={e => e.key === "Enter" && onSendMessage()}
                   placeholder="Type a message…"
                   style={{ flex: 1, background: C.bg, border: `1px solid ${C.border}`, color: C.text, borderRadius: 8, padding: "9px 13px", fontSize: 13, outline: "none", fontFamily: "inherit" }} />
-                <Btn onClick={onSendMessage}>Send ↑</Btn>
+                <Btn onClick={onSendMessage}>↑</Btn>
               </div>
             </>
           )}
         </div>
+        )}
       </div>
     </div>
   );
@@ -765,6 +793,7 @@ function App() {
     </div>
   );
 
+  const isMobile = useIsMobile();
   const pendingCount = requests.filter(r => r.receiver_id === user.id && r.status === "pending").length;
 
   return (
@@ -776,83 +805,106 @@ function App() {
         ::-webkit-scrollbar { width: 5px; }
         ::-webkit-scrollbar-thumb { background: ${C.border}; border-radius: 99px; }
         input::placeholder { color: ${C.muted}; }
+        input, button { -webkit-tap-highlight-color: transparent; }
       `}</style>
 
-      <div style={{ display: "flex", height: "100vh", background: C.bg, fontFamily: "'DM Sans', sans-serif", color: C.text }}>
+      <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", height: "100vh", background: C.bg, fontFamily: "'DM Sans', sans-serif", color: C.text }}>
 
-        {/* ── SIDEBAR ── */}
-        <div style={{ width: 220, background: C.surface, borderRight: `1px solid ${C.border}`, display: "flex", flexDirection: "column", flexShrink: 0 }}>
-
-          {/* Logo */}
-          <div style={{ padding: "22px 20px 18px", borderBottom: `1px solid ${C.border}` }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-              <div style={{ width: 32, height: 32, background: C.accent, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>⇄</div>
-              <span style={{ fontSize: 17, fontWeight: 800, fontFamily: "'Syne', sans-serif", color: C.text }}>SkillSwap</span>
+        {/* ── DESKTOP SIDEBAR ── */}
+        {!isMobile && (
+          <div style={{ width: 220, background: C.surface, borderRight: `1px solid ${C.border}`, display: "flex", flexDirection: "column", flexShrink: 0 }}>
+            <div style={{ padding: "22px 20px 18px", borderBottom: `1px solid ${C.border}` }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                <div style={{ width: 32, height: 32, background: C.accent, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>⇄</div>
+                <span style={{ fontSize: 17, fontWeight: 800, fontFamily: "'Syne', sans-serif", color: C.text }}>SkillSwap</span>
+              </div>
+            </div>
+            <nav style={{ padding: "12px 10px", flex: 1 }}>
+              {NAV_ITEMS.map(item => (
+                <button key={item.id} onClick={() => navigateTo(item.id)} style={{
+                  width: "100%", display: "flex", alignItems: "center", gap: 10,
+                  padding: "10px 12px", borderRadius: 9, border: "none", cursor: "pointer",
+                  background: activeTab === item.id ? C.accentDim : "transparent",
+                  color: activeTab === item.id ? C.accentText : C.soft,
+                  fontSize: 13, fontWeight: activeTab === item.id ? 700 : 500,
+                  marginBottom: 2, textAlign: "left", fontFamily: "inherit", transition: "all 0.15s",
+                }}>
+                  <span style={{ fontSize: 15 }}>{item.icon}</span>
+                  {item.label}
+                  {item.id === "requests" && pendingCount > 0 && (
+                    <span style={{ marginLeft: "auto", background: C.accent, color: "#000", borderRadius: 999, fontSize: 10, fontWeight: 800, padding: "2px 7px" }}>{pendingCount}</span>
+                  )}
+                </button>
+              ))}
+            </nav>
+            <div style={{ padding: "14px 16px", borderTop: `1px solid ${C.border}` }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                <Avatar name={profile?.name || ""} size={32} />
+                <div style={{ flex: 1, overflow: "hidden" }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: C.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{profile?.name}</div>
+                  <div style={{ fontSize: 10, color: C.soft }}>⏱ {profile?.time_credits ?? 0} credits</div>
+                </div>
+              </div>
+              <button onClick={handleLogout} style={{
+                width: "100%", padding: "8px", background: "transparent",
+                border: `1px solid ${C.border}`, color: "#f87171",
+                borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
+              }}>Sign Out</button>
             </div>
           </div>
+        )}
 
-          {/* Nav */}
-          <nav style={{ padding: "12px 10px", flex: 1 }}>
+        {/* ── MOBILE TOPBAR ── */}
+        {isMobile && (
+          <div style={{ background: C.surface, borderBottom: `1px solid ${C.border}`, padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ width: 28, height: 28, background: C.accent, borderRadius: 7, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13 }}>⇄</div>
+              <span style={{ fontSize: 15, fontWeight: 800, fontFamily: "'Syne', sans-serif", color: C.text }}>SkillSwap</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ fontSize: 11, color: C.soft }}>⏱ {profile?.time_credits ?? 0}</div>
+              <button onClick={handleLogout} style={{ background: "transparent", border: `1px solid ${C.border}`, color: "#f87171", borderRadius: 7, fontSize: 11, fontWeight: 600, cursor: "pointer", padding: "5px 10px", fontFamily: "inherit" }}>Out</button>
+            </div>
+          </div>
+        )}
+
+        {/* ── MAIN CONTENT ── */}
+        <div style={{ flex: 1, overflow: "auto", padding: isMobile ? "16px 14px 80px" : "32px 36px" }}>
+          {activeTab === "dashboard" && <DashboardTab profile={profile} requests={requests} matchedUsers={matchedUsers} />}
+          {activeTab === "skills"    && <SkillsTab profile={profile} user={user} onRefresh={refresh} />}
+          {activeTab === "matches"   && <MatchesTab matchedUsers={matchedUsers} profile={profile} user={user} onRefresh={refresh} />}
+          {activeTab === "requests"  && <RequestsTab requests={requests} user={user} onRefresh={refresh} />}
+          {activeTab === "chat"      && (
+            <ChatTab requests={requests} user={user} messages={messages} activeSwap={activeSwap}
+              onOpenChat={(req) => { setActiveSwap(req); if (req) openChatWithRealtime(req.id); }}
+              newMessage={newMessage} setNewMessage={setNewMessage}
+              onSendMessage={sendMessage} messagesEndRef={messagesEndRef} />
+          )}
+        </div>
+
+        {/* ── MOBILE BOTTOM NAV ── */}
+        {isMobile && (
+          <div style={{
+            position: "fixed", bottom: 0, left: 0, right: 0,
+            background: C.surface, borderTop: `1px solid ${C.border}`,
+            display: "flex", zIndex: 100,
+          }}>
             {NAV_ITEMS.map(item => (
               <button key={item.id} onClick={() => navigateTo(item.id)} style={{
-                width: "100%", display: "flex", alignItems: "center", gap: 10,
-                padding: "10px 12px", borderRadius: 9, border: "none", cursor: "pointer",
-                background: activeTab === item.id ? C.accentDim : "transparent",
-                color: activeTab === item.id ? C.accentText : C.soft,
-                fontSize: 13, fontWeight: activeTab === item.id ? 700 : 500,
-                marginBottom: 2, textAlign: "left", fontFamily: "inherit", transition: "all 0.15s",
+                flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                padding: "10px 4px 8px", border: "none", cursor: "pointer", background: "transparent",
+                color: activeTab === item.id ? C.accentText : C.muted,
+                fontFamily: "inherit", position: "relative",
               }}>
-                <span style={{ fontSize: 15 }}>{item.icon}</span>
-                {item.label}
+                <span style={{ fontSize: 18, lineHeight: 1 }}>{item.icon}</span>
+                <span style={{ fontSize: 9, marginTop: 3, fontWeight: activeTab === item.id ? 700 : 400 }}>{item.label}</span>
                 {item.id === "requests" && pendingCount > 0 && (
-                  <span style={{ marginLeft: "auto", background: C.accent, color: "#000", borderRadius: 999, fontSize: 10, fontWeight: 800, padding: "2px 7px" }}>{pendingCount}</span>
+                  <span style={{ position: "absolute", top: 6, right: "50%", transform: "translateX(8px)", background: C.accent, color: "#000", borderRadius: 999, fontSize: 9, fontWeight: 800, padding: "1px 5px" }}>{pendingCount}</span>
                 )}
               </button>
             ))}
-          </nav>
-
-          {/* User + Logout */}
-          <div style={{ padding: "14px 16px", borderTop: `1px solid ${C.border}` }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-              <Avatar name={profile?.name || ""} size={32} />
-              <div style={{ flex: 1, overflow: "hidden" }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: C.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{profile?.name}</div>
-                <div style={{ fontSize: 10, color: C.soft }}>⏱ {profile?.time_credits ?? 0} credits</div>
-              </div>
-            </div>
-            <button onClick={handleLogout} style={{
-              width: "100%", padding: "8px", background: "transparent",
-              border: `1px solid ${C.border}`, color: "#f87171",
-              borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
-            }}>Sign Out</button>
           </div>
-        </div>
-
-        {/* ── MAIN CONTENT ── */}
-        <div style={{ flex: 1, overflow: "auto", padding: "32px 36px" }}>
-          {activeTab === "dashboard" && (
-            <DashboardTab profile={profile} requests={requests} matchedUsers={matchedUsers} />
-          )}
-          {activeTab === "skills" && (
-            <SkillsTab profile={profile} user={user} onRefresh={refresh} />
-          )}
-          {activeTab === "matches" && (
-            <MatchesTab matchedUsers={matchedUsers} profile={profile} user={user} onRefresh={refresh} />
-          )}
-          {activeTab === "requests" && (
-            <RequestsTab requests={requests} user={user} onRefresh={refresh} />
-          )}
-          {activeTab === "chat" && (
-            <ChatTab
-              requests={requests} user={user}
-              messages={messages} activeSwap={activeSwap}
-              onOpenChat={(req) => { setActiveSwap(req); openChatWithRealtime(req.id); }}
-              newMessage={newMessage} setNewMessage={setNewMessage}
-              onSendMessage={sendMessage}
-              messagesEndRef={messagesEndRef}
-            />
-          )}
-        </div>
+        )}
       </div>
     </>
   );
